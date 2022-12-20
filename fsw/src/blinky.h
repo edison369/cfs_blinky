@@ -42,6 +42,12 @@
 #include "blinky_msgids.h"
 #include "blinky_msg.h"
 
+#include "gen-uC.h"
+#define GENUC
+
+static const char bus_path[] = "/dev/i2c-2";
+static const char genuC_path[] = "/dev/i2c-2.genuC-1";
+
 /***********************************************************************/
 #define BLINKY_PIPE_DEPTH 32 /* Depth of the Command Pipe for Application */
 
@@ -70,6 +76,7 @@ typedef struct
     ** Housekeeping telemetry packet...
     */
     BLINKY_HkTlm_t HkTlm;
+    BLINKY_RFTlm_t RFTlm;
 
     /*
     ** Run Status variable used in the main processing loop
@@ -107,6 +114,9 @@ int32 BLINKY_ResetCounters(const BLINKY_ResetCountersCmd_t *Msg);
 int32 BLINKY_LedOn(const BLINKY_LedStateCmd_t *Msg);
 int32 BLINKY_LedOff(const BLINKY_LedStateCmd_t *Msg);
 int32 BLINKY_Noop(const BLINKY_NoopCmd_t *Msg);
+
+int32 genuC_driver_open(void);
+int32 send_tlm_data(void);
 
 bool BLINKY_VerifyCmdLength(CFE_MSG_Message_t *MsgPtr, size_t ExpectedLength);
 

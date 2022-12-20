@@ -37,6 +37,8 @@
 #define BLINKY_LED_ON_CC         2
 #define BLINKY_LED_OFF_CC        3
 
+#define RF_PAYLOAD_BYTES 30
+
 /*************************************************************************/
 
 /*
@@ -79,6 +81,13 @@ typedef struct
     uint8 spare[2];
     uint8 LedState[8];
 } BLINKY_HkTlm_Payload_t;
+
+typedef struct
+{
+  uint8_t AppID[2];
+  BLINKY_HkTlm_Payload_t Payload;         /**< \brief Telemetry payload */
+  uint8 spare[16];
+} BLINKY_RFTlm_t;
 
 typedef struct
 {

@@ -40,6 +40,9 @@
 #define BLINKY_LEN_ERR_EID           8
 #define BLINKY_PIPE_ERR_EID          9
 
+// Events IDs related to the I2C
+#define BLINKY_DEV_INF_EID           11
+
 #define BLINKY_EVENT_COUNTS          9
 
 #endif /* BLINKY_EVENTS_H */
