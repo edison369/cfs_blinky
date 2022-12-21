@@ -42,15 +42,15 @@
 BLINKY_Data_t BLINKY_Data;
 
 uint32 BLINKY_GpioLedMap[] = {
-        BBB_LED_USR0,
-	BBB_LED_USR1,
-	BBB_LED_USR2,
-	BBB_LED_USR3,
-        BBB_P8_10,
-	BBB_P8_12,
-	BBB_P8_14,
-	BBB_P8_16
-     };
+BBB_LED_USR0,
+BBB_LED_USR1,
+BBB_LED_USR2,
+BBB_LED_USR3,
+BBB_P8_10,
+BBB_P8_12,
+BBB_P8_14,
+BBB_P8_16
+};
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * *  * * * * **/
 /* BLINKY_Main() -- Application entry point and main process loop         */
@@ -72,12 +72,6 @@ void BLINKY_Main(void)
     ** CFE_ES_RunStatus_APP_ERROR and the App will not enter the RunLoop
     */
     status = BLINKY_Init();
-    if (status != CFE_SUCCESS)
-    {
-        BLINKY_Data.RunStatus = CFE_ES_RunStatus_APP_ERROR;
-    }
-
-    status = genuC_driver_open();
     if (status != CFE_SUCCESS)
     {
         BLINKY_Data.RunStatus = CFE_ES_RunStatus_APP_ERROR;
@@ -183,6 +177,12 @@ int32 BLINKY_Init(void)
                  sizeof(BLINKY_Data.HkTlm));
 
     /*
+    ** Initialize output RF packet.
+    */
+    CFE_MSG_Init(CFE_MSG_PTR(BLINKY_Data.OutData.TelemetryHeader), CFE_SB_ValueToMsgId(BLINKY_RF_DATA_MID),
+                 sizeof(BLINKY_Data.OutData));
+
+    /*
     ** Create Software Bus message pipe.
     */
     status = CFE_SB_CreatePipe(&BLINKY_Data.CommandPipe, BLINKY_Data.PipeDepth, BLINKY_Data.PipeName);
@@ -203,6 +203,17 @@ int32 BLINKY_Init(void)
     }
 
     /*
+    ** Subscribe to RF command packets
+    */
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(BLINKY_SEND_RF_MID), BLINKY_Data.CommandPipe);
+    if (status != CFE_SUCCESS)
+    {
+        CFE_ES_WriteToSysLog("Blinky: Error Subscribing to Command, RC = 0x%08lX\n", (unsigned long)status);
+
+        return status;
+    }
+
+    /*
     ** Subscribe to ground command packets
     */
     status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(BLINKY_CMD_MID), BLINKY_Data.CommandPipe);
@@ -217,7 +228,8 @@ int32 BLINKY_Init(void)
     CFE_EVS_SendEvent(BLINKY_STARTUP_INF_EID, CFE_EVS_EventType_INFORMATION, "BLINKY App Initialized.%s",
                       BLINKY_VERSION_STRING);
 
-    printf("Calling rtems_gpio_initialize\n");
+    CFE_EVS_SendEvent(BLINKY_STARTUP_INF_EID, CFE_EVS_EventType_INFORMATION,
+                      "BLINKY: Calling rtems_gpio_initialize");
     rtems_gpio_initialize ();
 
     return (CFE_SUCCESS);
@@ -246,6 +258,10 @@ void BLINKY_ProcessCommandPacket(CFE_SB_Buffer_t *SBBufPtr)
 
         case BLINKY_SEND_HK_MID:
             BLINKY_ReportHousekeeping((CFE_MSG_CommandHeader_t *)SBBufPtr);
+            break;
+
+        case BLINKY_SEND_RF_MID:
+            BLINKY_ReportRFTelemetry((CFE_MSG_CommandHeader_t *)SBBufPtr);
             break;
 
         default:
@@ -317,6 +333,34 @@ void BLINKY_ProcessGroundCommand(CFE_SB_Buffer_t *SBBufPtr)
 
 } /* End of BLINKY_ProcessGroundCommand() */
 
+int32 BLINKY_ReportRFTelemetry(const CFE_MSG_CommandHeader_t *Msg){
+
+  /*
+  ** Get command execution counters...
+  */
+  BLINKY_Data.OutData.CommandErrorCounter = BLINKY_Data.ErrCounter;
+  BLINKY_Data.OutData.CommandCounter      = BLINKY_Data.CmdCounter;
+
+  BLINKY_Data.OutData.AppID_H = (uint8_t) ((BLINKY_HK_TLM_MID >> 8) & 0xff);
+  BLINKY_Data.OutData.AppID_L = (uint8_t) (BLINKY_HK_TLM_MID & 0xff);
+
+  for(int i=0;i<8;i++){
+    if(i < 4){
+      BLINKY_Data.OutData.led_1_4[i] = BLINKY_Data.LedState[i];
+    }else{
+      BLINKY_Data.OutData.led_5_8[i] = BLINKY_Data.LedState[i];
+    }
+  }
+
+  /*
+  ** Send housekeeping telemetry packet...
+  */
+  CFE_SB_TimeStampMsg(CFE_MSG_PTR(BLINKY_Data.OutData.TelemetryHeader));
+  CFE_SB_TransmitMsg(CFE_MSG_PTR(BLINKY_Data.OutData.TelemetryHeader), true);
+
+  return CFE_SUCCESS;
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **/
 /*  Name:  BLINKY_ReportHousekeeping                                          */
 /*                                                                            */
@@ -340,20 +384,11 @@ int32 BLINKY_ReportHousekeeping(const CFE_MSG_CommandHeader_t *Msg)
     for (i = 0; i < BLINKY_NUM_LEDS; i++)
        BLINKY_Data.HkTlm.Payload.LedState[i]      = BLINKY_Data.LedState[i];
 
-     /*
-    ** Make the RF telemetry packet...
-    */
-    BLINKY_Data.RFTlm.AppID[0] = (uint8_t) ((BLINKY_HK_TLM_MID >> 8) & 0xff);
-    BLINKY_Data.RFTlm.AppID[1] = (uint8_t) (BLINKY_HK_TLM_MID & 0xff);
-    BLINKY_Data.RFTlm.Payload = BLINKY_Data.HkTlm.Payload;
-
     /*
     ** Send housekeeping telemetry packet...
     */
     CFE_SB_TimeStampMsg(CFE_MSG_PTR(BLINKY_Data.HkTlm.TelemetryHeader));
     CFE_SB_TransmitMsg(CFE_MSG_PTR(BLINKY_Data.HkTlm.TelemetryHeader), true);
-
-    send_tlm_data();
 
     return CFE_SUCCESS;
 
@@ -502,233 +537,3 @@ bool BLINKY_VerifyCmdLength(CFE_MSG_Message_t *MsgPtr, size_t ExpectedLength)
     return (result);
 
 } /* End of BLINKY_VerifyCmdLength() */
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **/
-/*                                                                            */
-/* Functions to interact with the gen-uC                                     */
-/*                                                                            */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * **/
-#ifdef GENUC
-  static int uC_ioctl(i2c_dev *dev, ioctl_command_t command, void *arg);
-
-  int32 send_tlm_data(){
-    int rv;
-
-    uint8_t *val;
-    val = NULL;
-    val = malloc(RF_PAYLOAD_BYTES * sizeof(uint8_t));
-
-    val[0] = BLINKY_Data.RFTlm.AppID[0];
-    val[1] = BLINKY_Data.RFTlm.AppID[1];
-    val[2] = BLINKY_Data.RFTlm.Payload.CommandErrorCounter;
-    val[3] = BLINKY_Data.RFTlm.Payload.CommandCounter;
-    val[4] = 0;
-    val[5] = 0;
-
-    for(int i=0;i<8;i++){
-      val[i+6] = BLINKY_Data.RFTlm.Payload.LedState[i];
-    }
-
-    for(int i=14;i<RF_PAYLOAD_BYTES;i++){
-      val[i] = 0;
-    }
-
-    // Send the telemetry payload
-    rv = uC_set_bytes(UC_ADDRESS, &val, RF_PAYLOAD_BYTES);
-    if(rv >= 0){
-      return CFE_SUCCESS;
-    }else{
-      return -1;
-    }
-  }
-
-  int32 genuC_driver_open(){
-
-  int rv;
-  int fd;
-
-  // Device registration
-  rv = i2c_dev_register_uC(
-    &bus_path[0],
-    &genuC_path[0]
-  );
-  if(rv == 0)
-    CFE_EVS_SendEvent(BLINKY_DEV_INF_EID, CFE_EVS_EventType_INFORMATION, "BLINKY: Device registered correctly at %s",
-                      genuC_path);
-
-  fd = open(&genuC_path[0], O_RDWR);
-  if(fd >= 0)
-    CFE_EVS_SendEvent(BLINKY_DEV_INF_EID, CFE_EVS_EventType_INFORMATION, "BLINKY: Device opened correctly at %s",
-                      genuC_path);
-  close(fd);
-
-  if(rv == 0 && fd >=0){
-    return CFE_SUCCESS;
-  }else{
-    return -1;
-  }
-
-}
-
-  #ifdef uC_reading
-
-  static int read_bytes(int fd, uint16_t i2c_address, uint8_t data_address, uint16_t nr_bytes, uint8_t **buff);
-
-  static int read_bytes(int fd, uint16_t i2c_address, uint8_t data_address, uint16_t nr_bytes, uint8_t **buff){
-  int rv;
-  uint8_t value[nr_bytes];
-  i2c_msg msgs[] = {{
-    .addr = i2c_address,
-    .flags = 0,
-    .buf = &data_address,
-    .len = 1,
-  }, {
-    .addr = i2c_address,
-    .flags = I2C_M_RD,
-    .buf = value,
-    .len = nr_bytes,
-  }};
-  struct i2c_rdwr_ioctl_data payload = {
-    .msgs = msgs,
-    .nmsgs = sizeof(msgs)/sizeof(msgs[0]),
-  };
-  uint16_t i;
-
-  rv = ioctl(fd, I2C_RDWR, &payload);
-  if (rv < 0) {
-    printf("ioctl failed...\n");
-  } else {
-
-    free(*buff);
-    *buff = malloc(nr_bytes * sizeof(uint8_t));
-
-    for (i = 0; i < nr_bytes; ++i) {
-      (*buff)[i] = value[i];
-    }
-  }
-
-  return rv;
-  }
-
-  int uC_get_bytes(uint16_t chip_address, uint8_t register_add, uint8_t **buff){
-
-  int fd;
-  int rv;
-
-  uint8_t *tmp;
-  tmp = NULL;
-
-  free(*buff);
-  *buff = malloc(1 * sizeof(uint8_t));
-
-  uint16_t nr_bytes = (uint16_t) 1;
-  uint8_t data_address = (uint8_t) register_add;
-
-  fd = open(&bus_path[0], O_RDWR);
-  if (fd < 0) {
-    printf("Couldn't open bus...\n");
-    return 1;
-  }
-
-  if(chip_address == 0){
-    chip_address = (uint16_t) UC_ADDRESS;
-  }
-
-  rv = read_bytes(fd, chip_address, data_address, nr_bytes, &tmp);
-
-  close(fd);
-
-  (*buff)[0] = *tmp;
-  free(tmp);
-
-  return rv;
-  }
-
-  #endif
-
-  int uC_set_bytes(uint16_t chip_address, uint8_t **val, int numBytes){
-
-  int fd;
-  int rv;
-
-  if(chip_address == 0){
-    chip_address = (uint16_t) UC_ADDRESS;
-  }
-
-  uint8_t writebuff[numBytes];
-
-  for(int i = 0; i<numBytes; i++){
-    writebuff[i] = (*val)[i];
-  }
-
-  i2c_msg msgs[] = {{
-    .addr = chip_address,
-    .flags = 0,
-    .buf = writebuff,
-    .len = numBytes,
-  }};
-  struct i2c_rdwr_ioctl_data payload = {
-    .msgs = msgs,
-    .nmsgs = sizeof(msgs)/sizeof(msgs[0]),
-  };
-
-  fd = open(&bus_path[0], O_RDWR);
-  if (fd < 0) {
-    printf("Couldn't open bus...\n");
-    return 1;
-  }
-
-  rv = ioctl(fd, I2C_RDWR, &payload);
-  if (rv < 0) {
-    perror("ioctl failed");
-  }
-  close(fd);
-
-  return rv;
-  }
-
-  int i2c_dev_register_uC(const char *bus_path, const char *dev_path){
-  i2c_dev *dev;
-
-  dev = i2c_dev_alloc_and_init(sizeof(*dev), bus_path, UC_ADDRESS);
-  if (dev == NULL) {
-    return -1;
-  }
-
-  dev->ioctl = uC_ioctl;
-
-  return i2c_dev_register(dev, dev_path);
-  }
-
-  static int uC_ioctl(i2c_dev *dev, ioctl_command_t command, void *arg){
-  int err;
-
-  // Variables for the Send test
-  int numBytes = 3;
-  uint8_t *val;
-
-  switch (command) {
-    case UC_SEND_TEST:
-
-      val = NULL;
-      val = malloc(numBytes * sizeof(uint8_t));
-
-      val[0] = 0x03;
-      val[1] = 0x06;
-      val[2] = 0x09;
-
-      err = uC_set_bytes(UC_ADDRESS, &val, numBytes); //Send 0x03, 0x06 and 0x09 to the uC default address
-      break;
-
-    default:
-      err = -ENOTTY;
-      break;
-  }
-
-  return err;
-  }
-
-  int uC_send_test(int fd){
-    return ioctl(fd, UC_SEND_TEST, NULL);
-  }
-#endif

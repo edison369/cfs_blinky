@@ -33,6 +33,8 @@
 /* V1 Command Message IDs must be 0x18xx */
 #define BLINKY_CMD_MID     0x18B1
 #define BLINKY_SEND_HK_MID 0x18B2
+#define BLINKY_SEND_RF_MID 0x18C1
+#define BLINKY_RF_DATA_MID 0x18C2
 /* V1 Telemetry Message IDs must be 0x08xx */
 #define BLINKY_HK_TLM_MID  0x08B3
 
