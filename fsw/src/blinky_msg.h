@@ -87,13 +87,13 @@ typedef struct
     uint8_t AppID_L;
     uint8 CommandCounter;
     uint8 CommandErrorCounter;
-    uint8 spare_1[2];
-    uint8 led_1_4[4];
-    uint8 led_5_8[4];
-    uint8 spare_2[4];
-    uint8 spare_3[4];
-    uint8 spare_4[4];
-    uint8 spare_5[4];
+    uint8 spare[2];
+    uint8 byte_group_1[4];
+    uint8 byte_group_2[4];
+    uint8 byte_group_3[4];
+    uint8 byte_group_4[4];
+    uint8 byte_group_5[4];
+    uint8 byte_group_6[4];
 } BLINKY_OutData_t;
 
 typedef struct

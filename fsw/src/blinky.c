@@ -346,10 +346,17 @@ int32 BLINKY_ReportRFTelemetry(const CFE_MSG_CommandHeader_t *Msg){
 
   for(int i=0;i<8;i++){
     if(i < 4){
-      BLINKY_Data.OutData.led_1_4[i] = BLINKY_Data.LedState[i];
+      BLINKY_Data.OutData.byte_group_1[i] = BLINKY_Data.LedState[i];
     }else{
-      BLINKY_Data.OutData.led_5_8[i] = BLINKY_Data.LedState[i];
+      BLINKY_Data.OutData.byte_group_2[i] = BLINKY_Data.LedState[i];
     }
+  }
+
+  for(int i=0;i<4;i++){
+    BLINKY_Data.OutData.byte_group_3[i] = 0;
+    BLINKY_Data.OutData.byte_group_4[i] = 0;
+    BLINKY_Data.OutData.byte_group_5[i] = 0;
+    BLINKY_Data.OutData.byte_group_6[i] = 0;
   }
 
   /*
