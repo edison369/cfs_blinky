@@ -88,12 +88,15 @@ typedef struct
     uint8 CommandCounter;
     uint8 CommandErrorCounter;
     uint8 spare[2];
-    uint8 byte_group_1[4];
-    uint8 byte_group_2[4];
-    uint8 byte_group_3[4];
-    uint8 byte_group_4[4];
-    uint8 byte_group_5[4];
-    uint8 byte_group_6[4];
+    uint8 byte_group_1[4];    // LED 0-3
+    uint8 byte_group_2[4];    // LED 4-7
+    uint8 byte_group_3[4];    // empty
+    uint8 byte_group_4[4];    // empty
+    uint8 byte_group_5[4];    // empty
+    uint8 byte_group_6[4];    // empty
+    uint8 byte_group_7[4];    // empty
+    uint8 byte_group_8[4];    // empty
+    uint8 byte_group_9[4];    // empty
 } BLINKY_OutData_t;
 
 typedef struct
