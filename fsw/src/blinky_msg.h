@@ -94,9 +94,6 @@ typedef struct
     uint8 byte_group_4[4];    // empty
     uint8 byte_group_5[4];    // empty
     uint8 byte_group_6[4];    // empty
-    uint8 byte_group_7[4];    // empty
-    uint8 byte_group_8[4];    // empty
-    uint8 byte_group_9[4];    // empty
 } BLINKY_OutData_t;
 
 typedef struct

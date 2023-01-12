@@ -357,9 +357,6 @@ int32 BLINKY_ReportRFTelemetry(const CFE_MSG_CommandHeader_t *Msg){
     BLINKY_Data.OutData.byte_group_4[i] = 0;
     BLINKY_Data.OutData.byte_group_5[i] = 0;
     BLINKY_Data.OutData.byte_group_6[i] = 0;
-    BLINKY_Data.OutData.byte_group_7[i] = 0;
-    BLINKY_Data.OutData.byte_group_8[i] = 0;
-    BLINKY_Data.OutData.byte_group_9[i] = 0;
   }
 
   /*
