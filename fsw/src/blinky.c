@@ -344,15 +344,9 @@ int32 BLINKY_ReportRFTelemetry(const CFE_MSG_CommandHeader_t *Msg){
   BLINKY_Data.OutData.AppID_H = (uint8_t) ((BLINKY_HK_TLM_MID >> 8) & 0xff);
   BLINKY_Data.OutData.AppID_L = (uint8_t) (BLINKY_HK_TLM_MID & 0xff);
 
-  for(int i=0;i<8;i++){
-    if(i < 4){
-      BLINKY_Data.OutData.byte_group_1[i] = BLINKY_Data.LedState[i];
-    }else{
-      BLINKY_Data.OutData.byte_group_2[i] = BLINKY_Data.LedState[i];
-    }
-  }
-
   for(int i=0;i<4;i++){
+    BLINKY_Data.OutData.byte_group_1[i] = BLINKY_Data.LedState[i];
+    BLINKY_Data.OutData.byte_group_2[i] = BLINKY_Data.LedState[i+4];
     BLINKY_Data.OutData.byte_group_3[i] = 0;
     BLINKY_Data.OutData.byte_group_4[i] = 0;
     BLINKY_Data.OutData.byte_group_5[i] = 0;
