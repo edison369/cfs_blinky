@@ -181,6 +181,7 @@ int32 BLINKY_Init(void)
     */
     CFE_MSG_Init(CFE_MSG_PTR(BLINKY_Data.OutData.TelemetryHeader), CFE_SB_ValueToMsgId(BLINKY_RF_DATA_MID),
                  sizeof(BLINKY_Data.OutData));
+    BLINKY_Data.OutData.App_Pckg_Counter = 0;
 
     /*
     ** Create Software Bus message pipe.
@@ -343,6 +344,8 @@ int32 BLINKY_ReportRFTelemetry(const CFE_MSG_CommandHeader_t *Msg){
 
   BLINKY_Data.OutData.AppID_H = (uint8_t) ((BLINKY_HK_TLM_MID >> 8) & 0xff);
   BLINKY_Data.OutData.AppID_L = (uint8_t) (BLINKY_HK_TLM_MID & 0xff);
+
+  ++BLINKY_Data.OutData.App_Pckg_Counter;
 
   for(int i=0;i<4;i++){
     BLINKY_Data.OutData.byte_group_1[i] = BLINKY_Data.LedState[i];
